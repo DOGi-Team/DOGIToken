@@ -9,7 +9,7 @@ import './RefundVault.sol';
 // 2. If the goal is reached, the state of the vault will change and the ether will be sent to the address
 // 3. If the goal is not reached , the state of the vault will change to refunding and the users will be able to call claimRefund() to get their ether
 
-/// @title Tokensale contract to carry out an ICO with the PallyCoin
+/// @title Tokensale contract to carry out an ICO with the DOGICoin
 /// Tokensale have a start and end timestamps, where investors can make
 /// token purchases and the Tokensale will assign them tokens based
 /// on a token per ETH rate. Funds collected are forwarded to a wallet
@@ -101,7 +101,7 @@ contract TokenSale is Pausable {
     uint256 public constant minPurchaseCrowdsale = 1 ether;
     
     // The maximum amount of Wei you must pay to participate in the cornerstone sale
-    uint256 public constant maxPurchaseConerstone = 800 ether;
+    uint256 public constant maxPurchaseCornerstone = 800 ether;
     
     // The maximum amount of Wei you must pay to participate in the private sale
     uint256 public constant maxPurchasePrivatesale = 800 ether;
@@ -141,15 +141,16 @@ contract TokenSale is Pausable {
     
     /// @notice Constructor of the crowsale to set up the main variables and create a token
     /// @param _wallet The wallet address that stores the Wei raised
-    /// @param _walletB The wallet address that stores the Wei raised after soft cap reached
     /// @param _tokenAddress The token used for the ICO
-    constructor (address _wallet, address _walletB, address _tokenAddress, uint256 _startTime, uint256 _endTime) public {
+    constructor (
+        address _wallet,
+        address _tokenAddress,
+        uint256 _startTime,
+        uint256 _endTime)
+    public {
         require(_startTime != 0 && _endTime != 0 && _startTime < _endTime &&
-                _tokenAddress != address(0) &&
-                _wallet != address(0) &&_walletB != address(0));
-
+                _tokenAddress != address(0) && _wallet != address(0));
         wallet = _wallet;
-        walletB = _walletB;
         token = DOGICoin(_tokenAddress);
         vault = new RefundVault(_wallet);
     }
@@ -260,7 +261,7 @@ contract TokenSale is Pausable {
         }
     }
    
-    /// @notice Buys the tokens for the specified tier and for the next one
+    /// @notice Handle the cross tire purchase
     /// @param _amountInWei The amount of ether in wei paid to buy the tokens
     /// @param _tire The tier selected
     /// @param _limit The limit of tokens of that tier
@@ -272,10 +273,10 @@ contract TokenSale is Pausable {
         uint256 _limit,
         uint256 _rate
     ) public returns(uint256 totalTokens) {
-        require(_amountInWei > 0 && _limit > 0 && _rate > 0);
+        require(_amountInWei > 0 && _limit > 0 && _rate > 0 && _limit > tokensRaised);
         require(_tire >= 1 && _tire <= MAX_NUM_TIRES);
         
-        uint256 weiThisTier = _limit.sub(tokensRaised).div(_rate);
+        uint256 weiThisTier = _limit.sub(tokensRaised).mul(1 ether).div(10 ** token.decimals()).div(_rate);
         uint256 weiNextTier = _amountInWei.sub(weiThisTier);
         uint256 numTokensNextTier = 0;
         bool returnTokens = false;
@@ -295,65 +296,77 @@ contract TokenSale is Pausable {
         }
     }
     
-    /// @notice Buys the tokens given the price of the tier one and the wei paid
+    /// @notice Buys the tokens given the price of the tier and the wei paid
     /// @param _amountInWei The amount of wei paid that will be used to buy tokens
     /// @param _tire The tier that you'll use for thir purchase
     /// @return calculatedTokens Returns how many tokens you've bought for that wei paid
-    function _calculateNumTokensCanBuy(uint256 _amountInWei, uint256 _tire) internal constant returns(uint256 numTokens) {
+    function _calculateNumTokensCanBuy(uint256 _amountInWei, uint256 _tire) internal constant returns(uint256) {
         require(_amountInWei > 0);
         require(_tire >= 1 && _tire <= MAX_NUM_TIRES);
-        
+
+        uint256 numTokens = 0;
+
         if (_tire == 1) {
-            numTokens = _amountInWei.mul(rateTier1);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier1);
         } else if(_tire == 2) {
-            numTokens = _amountInWei.mul(rateTier2);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier2);
         } else if(_tire == 3) {
-            numTokens = _amountInWei.mul(rateTier3);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier3);
         } else if(_tire == 4) {
-            numTokens = _amountInWei.mul(rateTier4);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier4);
         } else if(_tire == 5) {
-            numTokens = _amountInWei.mul(rateTier5);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier5);
         } else if(_tire == 6) {
-            numTokens = _amountInWei.mul(rateTier6);
+            numTokens = _amountInWei.mul(10 ** token.decimals()).div(1 ether).mul(rateTier6);
         }
+
+        return numTokens;
     }
     
-    /// @notice Buys the tokens given the price of the tier one and the wei paid
-    /// @return calculateMinPurchase Returns how many tokens you've bought for that wei paid
-    function _calculateMinPurchase() internal constant returns(uint256 calculatedMinPurchase) {
+    /// @notice Mininum ETH should be paid for the current tire
+    /// @return Returns the mininum ETH should be paid for the current tire
+    function _calculateMinPurchase() internal constant returns (uint256) {
+        uint256 minPurchase = minPurchaseCornerstone;
+
         if(tokensRaised < limitTier1) {
-            calculatedMinPurchase = minPurchaseCornerstone;
+            minPurchase = minPurchaseCornerstone;
         } else if(tokensRaised >= limitTier1 && tokensRaised < limitTier3) {
-            calculatedMinPurchase = minPurchasePrivatesale;
+            minPurchase = minPurchasePrivatesale;
         } else if(tokensRaised >= limitTier3 && tokensRaised < maxTokensRaised) {
-            calculatedMinPurchase = minPurchaseCrowdsale;
+            minPurchase = minPurchaseCrowdsale;
         }
+
+        return minPurchase;
     }
     
-    /// @notice Buys the tokens given the price of the tier one and the wei paid
-    /// @return calculateMaxPurchase Returns how many tokens you've bought for that wei paid
-    function _calculateMaxPurchase() internal constant returns(uint256 calculatedMaxPurchase) {
+    /// @notice Maximum ETH could be paid for the current tire
+    /// @return Returns the maximum ETH could be paid for the current tire
+    function _calculateMaxPurchase() internal constant returns (uint256) {
+        uint256 maxPurchase = maxPurchaseCornerstone;
+
         if(tokensRaised < limitTier1) {
-            calculatedMaxPurchase = minPurchaseCornerstone;
+            maxPurchase = maxPurchaseCornerstone;
         } else if(tokensRaised >= limitTier1 && tokensRaised < limitTier3) {
-            calculatedMaxPurchase = minPurchasePrivatesale;
+            maxPurchase = maxPurchasePrivatesale;
         } else if(tokensRaised >= limitTier3 && tokensRaised < maxTokensRaised) {
-            calculatedMaxPurchase = minPurchaseCrowdsale;
+            maxPurchase = maxPurchaseCrowdsale;
         }
+
+        return maxPurchase;
     }
+    
+    /// @notice Checks if a purchase is considered valid
+    /// @return bool If the purchase is valid or not
+    function _validPurchase() internal constant returns (bool) {
+        bool nonZeroPurchase = msg.value > 0;
+        bool withinPeriod = now >= startTime && now <= endTime;
+        bool withinTokenLimit = tokensRaised < maxTokensRaised;
+        bool minimumPurchase = (msg.value >= _calculateMinPurchase());
+        bool hasBalanceAvailable = (balancesInWei[msg.sender] < _calculateMaxPurchase());
 
-   /// @notice Checks if a purchase is considered valid
-   /// @return bool If the purchase is valid or not
-   function _validPurchase() internal constant returns(bool) {
-      bool withinPeriod = now >= startTime && now <= endTime;
-      bool nonZeroPurchase = msg.value > 0;
-      bool withinTokenLimit = tokensRaised < maxTokensRaised;
-      bool minimumPurchase = (msg.value >= _calculateMinPurchase());
-      bool hasBalanceAvailable = (balancesInWei[msg.sender] < _calculateMaxPurchase());
-
-      // We want to limit the gas to avoid giving priority to the biggest paying contributors
-      //bool limitGas = tx.gasprice <= limitGasPrice;
-
-      return withinPeriod && nonZeroPurchase && withinTokenLimit && minimumPurchase && hasBalanceAvailable;
+        // We want to limit the gas to avoid giving priority to the biggest paying contributors
+        //bool limitGas = tx.gasprice <= limitGasPrice;
+        
+        return nonZeroPurchase && withinPeriod && withinTokenLimit && minimumPurchase && hasBalanceAvailable;
    }
 }

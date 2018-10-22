@@ -76,10 +76,15 @@ contract SingleVesting {
         
         if (now < cliff) {
             return 0;
-        } else if (now >= start.add(duration)) {
+        } else if (now >= cliff.add(duration)) {
             return totalBalance;
         } else {
-            return totalBalance.mul(now.sub(start)).div(duration);
+            //return totalBalance.mul(now.sub(start)).div(duration);
+
+            uint256 elapsed = now.sub(cliff);
+            uint256 percent = (elapsed.div(30 days)).add(1);
+            percent = percent > 12 ? 12 : percent;
+            return totalBalance.mul(percent);
         }
     }
 }
@@ -96,7 +101,8 @@ contract VestingToken is PausableToken {
     /// @param duration The amount of tokens to send to that address
     function mintTokensWithTimeBasedVesting(
         address beneficiary,
-        uint256 tokens, uint256 start,
+        uint256 tokens,
+        uint256 start,
         uint256 cliff,
         uint256 duration
     ) public onlyOwner {
