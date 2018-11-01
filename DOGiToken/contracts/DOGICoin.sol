@@ -10,9 +10,7 @@ contract SingleVesting {
     
     event Released(uint256 amount);
     
-    // beneficiary of tokens afte r they are released
     address public beneficiary;
-    
     uint256 public cliff;
     uint256 public start;
     uint256 public duration;
@@ -24,15 +22,11 @@ contract SingleVesting {
      * _beneficiary, gradually in a linear fashion until _start + _duration. By then all
      * of the balance will have vested.
      * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
+     * @param _start start timestamp
      * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
      * @param _duration duration in seconds of the period in which the tokens will vest
     */
-    constructor (
-        address _beneficiary,
-        uint256 _start,
-        uint256 _cliff,
-        uint256 _duration)
-    public {
+    constructor (address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration) public {
         require(_beneficiary != address(0));
         require(_cliff <= _duration);
         
@@ -55,7 +49,7 @@ contract SingleVesting {
         
         token.safeTransfer(beneficiary, unreleased);
         
-        Released(unreleased);
+        emit Released(unreleased);
     }
     
     /**
@@ -76,15 +70,14 @@ contract SingleVesting {
         
         if (now < cliff) {
             return 0;
-        } else if (now >= cliff.add(duration)) {
+        } else if (now >= start.add(duration)) {
             return totalBalance;
         } else {
             //return totalBalance.mul(now.sub(start)).div(duration);
-
             uint256 elapsed = now.sub(cliff);
             uint256 percent = (elapsed.div(30 days)).add(1);
             percent = percent > 12 ? 12 : percent;
-            return totalBalance.mul(percent);
+            return totalBalance.mul(percent).div(12);
         }
     }
 }
@@ -92,28 +85,6 @@ contract SingleVesting {
 contract VestingToken is PausableToken {
     
     mapping (address => SingleVesting) public vesting;
-
-    /// @notice member function to mint time based vesting tokens to a beneficiary
-    /// @param beneficiary The buyer address
-    /// @param tokens The amount of tokens to send to that address
-    /// @param start The buyer address
-    /// @param cliff The amount of tokens to send to that address
-    /// @param duration The amount of tokens to send to that address
-    function mintTokensWithTimeBasedVesting(
-        address beneficiary,
-        uint256 tokens,
-        uint256 start,
-        uint256 cliff,
-        uint256 duration
-    ) public onlyOwner {
-        require(beneficiary != 0x0);
-        require(tokens > 0);
-        
-        //vesting[beneficiary] = new SingleVesting(beneficiary, start, cliff, duration);
-        //require(token.mint(address(vesting[beneficiary]), tokens));
-        
-        //NucleusVisionTimeVestingTokensMinted(beneficiary, tokens, start, cliff, duration);
-    }
     
     // member function that can be called to release vested tokens periodically
     function releaseVestedTokens(address beneficiary) public {
@@ -133,7 +104,7 @@ contract DOGICoin is VestingToken {
     
     string public constant symbol = 'DOGI';
     
-    uint8 public constant decimals = 18;
+    uint256 public constant decimals = 18;
     
     uint256 public totalSupply = 0;
     
@@ -169,21 +140,41 @@ contract DOGICoin is VestingToken {
         require(_crowdsale != address(0));
         crowdsale = _crowdsale;
     }
-    
-    /// @notice Distributes the ICO tokens. Only the crowdsale address can execute this
-    /// @param _buyer The buyer address
+
+    /// @notice member function to mint time based vesting tokens to a beneficiary
+    /// @param beneficiary The buyer address
     /// @param tokens The amount of tokens to send to that address
-    function distributeICOTokens(address _buyer, uint tokens) external onlyCrowdsale whenNotPaused {
-        require(_buyer != address(0));
+    /// @param start The buyer address
+    /// @param cliff The amount of tokens to send to that address
+    /// @param duration The amount of tokens to send to that address
+    function LockTokensWithTimeBasedVesting (
+        address beneficiary,
+        uint256 tokens,
+        uint256 start,
+        uint256 cliff,
+        uint256 duration
+    ) public onlyOwner {
+        require(beneficiary != 0x0);
         require(tokens > 0);
-        
+
         // Check that the limit of 50M ICO tokens hasn't been met yet
         require(tokensDistributedCrowdsale < limitCrowdsale);
         require(tokensDistributedCrowdsale.add(tokens) <= limitCrowdsale);
         
         tokensDistributedCrowdsale = tokensDistributedCrowdsale.add(tokens);
-        balances[_buyer] = balances[_buyer].add(tokens);
         
-        //mintTokensWithTimeBasedVesting();
+        vesting[beneficiary] = new SingleVesting(beneficiary, start, cliff, duration);
+        _lock(address(vesting[beneficiary]), tokens);
+    }    
+    
+    /// @notice Function to lock tokens
+    /// @param _to The address that will receive the minted tokens.
+    /// @param _amount The amount of tokens to mint.
+    /// @return A boolean that indicates if the operation was successful.
+    function _lock(address _to, uint256 _amount) internal returns (bool) {
+        totalSupply = totalSupply.add(_amount);
+        balances[_to] = balances[_to].add(_amount);
+        emit Transfer(address(0), _to, _amount);
+        return true;
     }
 }

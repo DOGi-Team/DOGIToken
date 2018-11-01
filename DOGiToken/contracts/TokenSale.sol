@@ -74,22 +74,22 @@ contract TokenSale is Pausable {
     uint256 public rateTier6;
     
     // The maximum amount of tokens for tire1
-    uint256 public constant limitTier1 = 35e6 * (10 ** token.decimals());
+    uint256 public limitTier1 = 35e6 * (10 ** token.decimals());
     
     // The maximum amount of tokens for tire1
-    uint256 public constant limitTier2 = 70e6 * (10 ** token.decimals());
+    uint256 public limitTier2 = 70e6 * (10 ** token.decimals());
     
     // The maximum amount of tokens for tire1
-    uint256 public constant limitTier3 = 119e6 * (10 ** token.decimals());
+    uint256 public limitTier3 = 119e6 * (10 ** token.decimals());
     
     // The maximum amount of tokens for tire1
-    uint256 public constant limitTier4 = 126e6 * (10 ** token.decimals());
+    uint256 public limitTier4 = 126e6 * (10 ** token.decimals());
     
     // The maximum amount of tokens for tire1
-    uint256 public constant limitTier5 = 133e6 * (10 ** token.decimals());
+    uint256 public limitTier5 = 133e6 * (10 ** token.decimals());
     
     // The maximum amount of tokens for tire6 which is also the max amount of tokens for token sale
-    uint256 public constant maxTokensRaised = 140e6 * (10 ** token.decimals());
+    uint256 public maxTokensRaised = 140e6 * (10 ** token.decimals());
     
     // The minimum amount of Wei you must pay to participate in the cornerstone sale
     uint256 public constant minPurchaseCornerstone = 50 ether;
@@ -192,11 +192,11 @@ contract TokenSale is Pausable {
         etherRaisedInWei = etherRaisedInWei.add(actualAmountPaid);
         uint256 tokensRaisedBeforeThisTransaction = tokensRaised;
         tokensRaised = tokensRaised.add(actualTokenPurchased);
-        token.distributeICOTokens(msg.sender, actualTokenPurchased);
+        token.LockTokensWithTimeBasedVesting(msg.sender, actualTokenPurchased, 0, 0, 0);
         
         // Keep a record of how many tokens everybody gets in case we need to do refunds
         tokenPurchased[msg.sender] = tokenPurchased[msg.sender].add(actualTokenPurchased);
-        TokenPurchase(msg.sender, actualAmountPaid, actualTokenPurchased);
+        emit TokenPurchase(msg.sender, actualAmountPaid, actualTokenPurchased);
         // numberOfTransactions = numberOfTransactions.add(1);
         
         /*
