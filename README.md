@@ -1,1 +1,1 @@
-# DOGiCoin
+# DOGIToken
