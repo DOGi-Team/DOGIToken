@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
-import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
+import './lib/SafeMath.sol';
+import './lib/Pausable.sol';
 import './DOGICoin.sol';
 import './RefundVault.sol';
 
@@ -23,6 +23,9 @@ contract TokenSale is Pausable {
     
     // The vault that will store the ether until the goal is reached
     RefundVault public vault;
+
+    // 1 ether exchange 6256 DOGICoin
+    uint256 public constant ethToDOGICoin = 6256;
     
     // The block number of when the Tokensale starts
     // 10/15/2017 @ 11:00am (UTC)
@@ -51,27 +54,27 @@ contract TokenSale is Pausable {
     
     // The rate of tokens per ether. Only applied for the first tier, the first
     // 35 million tokens sold
-    uint256 public rateTier1;
+    uint256 public rateTier1 = 55;
     
     // The rate of tokens per ether. Only applied for the second tier, at between
     // 35 million tokens sold and 70 million tokens sold
-    uint256 public rateTier2;
+    uint256 public rateTier2 = 70;
     
     // The rate of tokens per ether. Only applied for the third tier, at between
     // 70 million tokens sold and 119 million tokens sold
-    uint256 public rateTier3;
+    uint256 public rateTier3 = 80;
     
     // The rate of tokens per ether. Only applied for the fourth tier, at between
     // 119 million tokens sold and 126 million tokens sold
-    uint256 public rateTier4;
+    uint256 public rateTier4 = 90;
     
     // The rate of tokens per ether. Only applied for the fourth tier, at between
     // 126 million tokens sold and 133 million tokens sold
-    uint256 public rateTier5;
+    uint256 public rateTier5 = 95;
     
     // The rate of tokens per ether. Only applied for the fourth tier, at between
     // 133 million tokens sold and 140 million tokens sold
-    uint256 public rateTier6;
+    uint256 public rateTier6 = 100;
     
     // The maximum amount of tokens for tire1
     uint256 public limitTier1 = 35e6 * (10 ** token.decimals());
